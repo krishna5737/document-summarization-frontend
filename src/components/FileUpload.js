@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import TextDisplay from './TextDisplay';
 import SummaryDisplay from './SummaryDisplay';
+import config from '../config';
 
 const FileUpload = () => {
   const [file, setFile] = useState(null);
@@ -72,7 +73,7 @@ const FileUpload = () => {
     formData.append('document', file);
 
     try {
-      const response = await fetch('http://localhost:5000/api/upload', {
+      const response = await fetch(`${config.apiUrl}/api/upload`, {
         method: 'POST',
         body: formData,
       });
@@ -115,7 +116,7 @@ const FileUpload = () => {
     setSummary(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/summarize', {
+      const response = await fetch(`${config.apiUrl}/api/summarize`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
