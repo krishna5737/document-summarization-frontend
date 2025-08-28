@@ -19,10 +19,6 @@ function App() {
             <FileUpload />
           </div>
         </main>
-        
-        <footer className="mt-12 text-center text-gray-500 text-sm">
-          <p>© {new Date().getFullYear()} Document Summary Assistant</p>
-        </footer>
       </div>
     </div>
   );
