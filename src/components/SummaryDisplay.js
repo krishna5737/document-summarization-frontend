@@ -1,4 +1,7 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { atomDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 const SummaryDisplay = ({ summary, isLoading, error }) => {
   return (
@@ -23,10 +26,33 @@ const SummaryDisplay = ({ summary, isLoading, error }) => {
           <div className="mb-4">
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-500">Summary Length: {summary.length}</span>
-              <span className="text-sm text-gray-500">Compression: {summary.compressionRatio}</span>
             </div>
             <div className="p-3 bg-gray-50 rounded-md max-h-96 overflow-y-auto">
-              <p className="text-gray-800 whitespace-pre-line">{summary.summary}</p>
+              <div className="text-gray-800 markdown-content">
+                <ReactMarkdown 
+                  components={{
+                    code({node, inline, className, children, ...props}) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      return !inline && match ? (
+                        <SyntaxHighlighter
+                          style={atomDark}
+                          language={match[1]}
+                          PreTag="div"
+                          {...props}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      ) : (
+                        <code className={className} {...props}>
+                          {children}
+                        </code>
+                      );
+                    }
+                  }}
+                >
+                  {summary.summary}
+                </ReactMarkdown>
+              </div>
             </div>
           </div>
         </div>
