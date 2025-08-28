@@ -1,9 +1,19 @@
 import React, { useState, useRef } from 'react';
+import TextDisplay from './TextDisplay';
+import SummaryDisplay from './SummaryDisplay';
 
 const FileUpload = () => {
   const [file, setFile] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [extractedText, setExtractedText] = useState(null);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState('');
+  const [summaryLength, setSummaryLength] = useState('medium');
+  const [summary, setSummary] = useState(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState('');
   const fileInputRef = useRef(null);
 
   const allowedFileTypes = ['application/pdf', 'image/jpeg', 'image/png'];
@@ -53,7 +63,10 @@ const FileUpload = () => {
       return;
     }
 
-    setUploadStatus('Uploading...');
+    setUploadStatus('Processing...');
+    setIsExtracting(true);
+    setExtractionError('');
+    setExtractedText(null);
 
     const formData = new FormData();
     formData.append('document', file);
@@ -67,17 +80,64 @@ const FileUpload = () => {
       const data = await response.json();
 
       if (response.ok) {
-        setUploadStatus(`File uploaded successfully: ${file.name}`);
+        setUploadStatus(`File processed successfully: ${file.name}`);
+        setUploadedFile(data);
+        
+        // Set extracted text if available
+        if (data.extraction) {
+          setExtractedText(data.extraction);
+        }
       } else {
-        setUploadStatus(`Error: ${data.error || 'Upload failed'}`);
+        setUploadStatus(`Error: ${data.error || 'Processing failed'}`);
+        setExtractionError(data.error || 'Processing failed');
       }
     } catch (error) {
       setUploadStatus(`Error: ${error.message}`);
+      setExtractionError(error.message);
+    } finally {
+      setIsExtracting(false);
     }
   };
 
   const openFileSelector = () => {
     fileInputRef.current.click();
+  };
+
+  // Handle summary generation
+  const handleGenerateSummary = async () => {
+    if (!extractedText || !extractedText.text) {
+      setSummaryError('No text available to summarize');
+      return;
+    }
+
+    setIsSummarizing(true);
+    setSummaryError('');
+    setSummary(null);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/summarize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: extractedText.text,
+          length: summaryLength
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSummary(data.summary);
+      } else {
+        setSummaryError(`Error: ${data.error || 'Failed to generate summary'}`);
+      }
+    } catch (error) {
+      setSummaryError(`Error: ${error.message}`);
+    } finally {
+      setIsSummarizing(false);
+    }
   };
 
   return (
@@ -186,6 +246,77 @@ const FileUpload = () => {
         }`}>
           {uploadStatus}
         </div>
+      )}
+      
+      {/* Text extraction happens automatically during upload */}
+      
+      {(extractedText || isExtracting || extractionError) && (
+        <TextDisplay 
+          extractedText={extractedText} 
+          isLoading={isExtracting} 
+          error={extractionError} 
+        />
+      )}
+      
+      {extractedText && !isExtracting && !extractionError && (
+        <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+          <h3 className="text-lg font-medium text-gray-800 mb-3">Generate Summary</h3>
+          <div className="flex items-center mb-4">
+            <span className="mr-3 text-gray-700">Summary Length:</span>
+            <div className="flex space-x-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-blue-600"
+                  name="summaryLength"
+                  value="short"
+                  checked={summaryLength === 'short'}
+                  onChange={() => setSummaryLength('short')}
+                />
+                <span className="ml-2">Short</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-blue-600"
+                  name="summaryLength"
+                  value="medium"
+                  checked={summaryLength === 'medium'}
+                  onChange={() => setSummaryLength('medium')}
+                />
+                <span className="ml-2">Medium</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio text-blue-600"
+                  name="summaryLength"
+                  value="long"
+                  checked={summaryLength === 'long'}
+                  onChange={() => setSummaryLength('long')}
+                />
+                <span className="ml-2">Long</span>
+              </label>
+            </div>
+          </div>
+          <button
+            onClick={handleGenerateSummary}
+            disabled={isSummarizing}
+            className={`w-full py-2 px-4 rounded-md text-white font-medium ${
+              isSummarizing ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'
+            }`}
+          >
+            {isSummarizing ? 'Generating...' : 'Generate Summary'}
+          </button>
+        </div>
+      )}
+      
+      {(summary || isSummarizing || summaryError) && (
+        <SummaryDisplay
+          summary={summary}
+          isLoading={isSummarizing}
+          error={summaryError}
+        />
       )}
     </div>
   );
